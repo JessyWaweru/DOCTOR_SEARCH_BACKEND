@@ -24,7 +24,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     
     # Include your app's URLs (everything starts with /api/)
-    path('api/', include('doctors.urls')), 
+    path('api/', include('doctor_search_app.urls')), 
 
     # Built-in JWT Refresh endpoint (Good for frontend to refresh tokens silently)
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
