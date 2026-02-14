@@ -1,129 +1,171 @@
+import random
 from django.core.management.base import BaseCommand
-from doctor_search_app.models import Doctor
+from django.contrib.auth import get_user_model
+from doctor_search_app.models import Doctor, Review
 from django.utils.text import slugify
 
+User = get_user_model()
+
 class Command(BaseCommand):
-    help = 'Load doctor data from transcribed image data'
+    help = 'Load doctor data with images and reviews'
 
     def handle(self, *args, **kwargs):
-        # Data structure: (Name, Specialty, Hospital/Address, Location, Contact)
-        # Note: 'Location' is derived from the section headers in your images (Nairobi, Kisumu, etc.)
+        self.stdout.write("Starting database seeding...")
+
+        # 1. CREATE DUMMY USERS (To write the reviews)
+        # ---------------------------------------------------------
+        dummy_names = [
+            "Wanjiku", "Otieno", "Kamau", "Achieng", "Odhiambo", "Nyambura", "Ochieng", 
+            "Njoroge", "Mwangi", "Chebet", "Kipkorir", "Adhiambo", "Wambui", "Maina", 
+            "Kariuki", "Mutua", "Omondi", "Anyango", "Juma", "Njeri"
+        ]
         
-        doctor_data = [
-            # --- NAIROBI (Start) ---
-            # Cardiologists / Physicians
-            ("Koome Muratha", "Cardiologist", "Nairobi Cardiac Rehab Centre, Landmark Plaza", "Nairobi", "2721580 / 2721543"),
-            ("Charles Kariuki", "Cardiologist", "Nairobi Hospital", "Nairobi", "2721609 / 2721543"),
-            ("Dr Philip Kisyoka", "Cardiologist", "Nairobi Hospital", "Nairobi", "27271337 / 0722964288"),
-            ("Dr Murithi Nyamu", "Cardiologist", "Nelson Awori", "Nairobi", "0722 433 130"),
-            ("William I Okumu", "Cardiologist", "Consolidated Bank Hse", "Nairobi", "0722 320146"),
-            
-            # Physicians / Chest / Gastro / etc
-            ("J.M Chakava", "Physician", "The Mater Hospital", "Nairobi", "020-2252815"),
-            ("Paul Ngugi", "Diabetologist", "Hazina Towers, 1st Floor", "Nairobi", "020-316571, 0722-726600"),
-            ("Kassim Goke", "Physician", "Upper Hill Medical Centre", "Nairobi", "020-3424832"),
-            ("R.M. Muraguri", "Gastroenterologist", "The Nairobi Hospital", "Nairobi", "020-2722302"),
-            ("S.M. Kairu", "Gastroenterologist", "Menelik Medical Centre", "Nairobi", "020-3877028"),
-            ("Prof Erastus O. Amayo", "Neurologist", "General Accident Hse", "Nairobi", "020-2722405"),
-            
-            # Dentists (Nairobi)
-            ("Dr Lucy Mutara", "Dentist", "Mpaka Plaza 1st Floor, Westlands", "Nairobi", "0721502512"),
-            ("Dr Sanjna K.", "Dentist", "Nairobi", "Nairobi", "0722252549"),
-            ("Dr Kasi Marani", "Dentist", "Hurlingham Medicare Plaza", "Nairobi", "2715239"),
-            ("MotherSmile Dental Care", "Dentist", "Junction of Ngong & Kinchwa Roads", "Nairobi", "0734741866"),
-            
-            # OBS/GYN (Nairobi)
-            ("Dr William Obwaka", "Obs/Gyn", "NSSF Building Floor B1", "Nairobi", "0716473326"),
-            ("Dr James Kamau", "Obs/Gyn", "Exchange Building 5th Floor", "Nairobi", "020-310800"),
-            ("Dr Gichuhi", "Obs/Gyn", "KMA Centre", "Nairobi", "0722 861 914"),
-            ("Dr Kavoo Linge", "Obs/Gyn", "Tumaini Hse Nrb", "Nairobi", "0722 522 085"),
-            ("Eunice J Cheserem", "Obs/Gyn", "Nairobi Hospital Drs Plaza", "Nairobi", "020-2846434"),
+        users = []
+        for name in dummy_names:
+            username = f"{name.lower()}{random.randint(1, 99)}"
+            email = f"{username}@example.com"
+            user, created = User.objects.get_or_create(username=username, email=email)
+            if created:
+                user.set_password("password123")
+                user.save()
+            users.append(user)
+        
+        self.stdout.write(f"Created/Loaded {len(users)} dummy users.")
 
-            # Paediatricians (Nairobi)
-            ("Dr D M Kinuthia", "Paediatrician", "Aga Khan University Hospital", "Nairobi", "3740000 ext 2221"),
-            ("C.A Okello (Mrs)", "Paediatrician", "Hurlingham Medical Centre", "Nairobi", "020-2712852"),
-            ("Dr Njuki", "Paediatrician", "Acacia Medical Centre", "Nairobi", "020-2722714"),
-            
-            # --- DOCTOR 2 IMAGE (ENT / Surgeons / Etc) ---
-            # ENT (Nairobi)
-            ("Peter M", "ENT Surgeon", "Hazina Towers 1st Floor", "Nairobi", "020-2434745"),
-            ("Billy Mungai", "ENT Surgeon", "Consolidated Building 5th Flr", "Nairobi", "242831/242673"),
-            ("Dr Anne Maina", "ENT Surgeon", "Optimum Medical Centre", "Nairobi", "0722 566 039"),
-            ("Dr Maurice Podho", "ENT Surgeon", "Nakuru ENT Medical Centre", "Nakuru", "051-2215953"), # Note: Nakuru address in Nrb list? I will label based on location if explicit.
-            
-            # Surgeons (Nairobi)
-            ("Dr Joab Bodo", "Orthopaedic Surgeon", "Aga Khan University Hospital", "Nairobi", "375 1087"),
-            ("Dr Choutkin", "Orthopaedic Surgeon", "5th Avenue Suites, 7th Floor", "Nairobi", "2713838"),
-            ("M.R Khan", "Surgeon", "Nairobi Hospital", "Nairobi", "2713935"),
-            ("Dr John K N", "General Surgeon", "Nairobi Hospital", "Nairobi", "202-2720726"),
-            ("Edwin K Rono", "Craniofacial Surgeon", "M.P Shah Hospital", "Nairobi", "0720-456773"),
 
-            # Ophthalmologists
-            ("Prof Saida", "Ophthalmologist", "Yaya Centre", "Nairobi", "562525"),
-            ("Ravji H.", "Ophthalmologist", "Utalii Hse 1st Floor", "Nairobi", "020-218585"),
-            
-            # Rheumatologist
-            ("Dr Omondi Oyoo", "Rheumatologist", "Fortis Granite House", "Nairobi", "2724044"),
-            ("Dr Bernard Owing", "Rheumatologist", "Aga Khan University Hospital", "Nairobi", "0728 820 209"),
-
-            # Psychiatrists
-            ("Marx M.O Okonji", "Psychiatrist", "Nairobi Hospital", "Nairobi", "3743012"),
-            ("Margaret Mak", "Psychiatrist", "Fort Granite Suite B4", "Nairobi", "0722829599"),
-            
-            # --- KISUMU (Start) ---
-            ("Dr Walter Otieno", "Paediatrician", "Drs. Plaza-Kisumu", "Kisumu", "0722144814"),
-            ("Dr Dedan Ongong'a", "Paediatrician", "Oasis Medical Centre", "Kisumu", "0721418415"),
-            ("Dr Janet Oyieko", "Paediatrician", "Oasis Medical Centre", "Kisumu", "0721 99 69 88"),
-            
-            # --- DOCTOR 3 IMAGE (Kisumu / Mombasa / Others) ---
-            # Kisumu Continued
-            ("Dr James Wagude", "Paediatrician", "Oasis Medical Centre", "Kisumu", "0733 78 00 16"),
-            ("Dr Willis Ovieko", "Urologist", "Oasis Medical Centre", "Kisumu", "0720299505"),
-            ("Dr Charles Nyakinda", "Surgeon", "Oasis Medical Centre", "Kisumu", "0722 53 79 14"),
-            ("Dr F.A Otieno", "Surgeon", "Drs Plaza-Kisumu", "Kisumu", "0722 30 12 12"),
-            ("Dr Leah Okin", "Obs/Gyn", "Oasis Medical Centre", "Kisumu", "0727 79 19 05"),
-            ("Dr Michael Owili", "Physician", "Kisumu", "Kisumu", "0722 47 69 83"),
-            ("Dr David Odeny", "ENT", "Intermedicons Kisumu", "Kisumu", "057-2021202"),
-            
-            # Mombasa
-            ("Satish Mangal Vaghela", "Dentist", "Nyali Dental Care", "Mombasa", "041-314953"),
-            ("Dr Salaah A.O", "Dentist", "TSS Towers 1st Flr", "Mombasa", "0733 39 39 39"),
-            ("Dr Karume", "Obs/Gyn", "Mombasa", "Mombasa", "0733 516 321"),
-            ("N.D Mnjalla", "Ophthalmologist", "Aga Khan Hospital Mombasa", "Mombasa", "041-2228067"),
-            ("Dr C.E Muyodi", "Physician", "Pandya Memorial Hospital", "Mombasa", "2230674"),
-            ("Dr F. Gikandi", "Paediatrician", "Aga Khan Hospital Mombasa", "Mombasa", "0722 684 176"),
-            ("Dr J.M Muthuri", "Surgeon", "Mombasa Hospital Clinics", "Mombasa", "041-2224105"),
-            
-            # Kakamega
-            ("Hezron W Odongo", "Paediatrician", "Canon Awori St", "Kakamega", "056 30547"),
-            ("N.M. Wambugu", "Dentist", "Boflo Building 1st Floor", "Kakamega", "0733 606 327"),
-            
-            # Nakuru
-            ("Dr Norman K Njogu", "Obs/Gyn", "Prime Care Medical Centre", "Nakuru", "N/A"),
-            ("Dr Naresh Sarna", "Dentist", "Arcade House", "Nakuru", "0733 711 032"),
-            
-            # Thika
-            ("J.K Mwangi", "Dentist", "Thika Dental Care", "Thika", "067-22276"),
-            ("Dr J.K Thuo", "Physician", "Jogoo Building", "Thika", "067-22440"),
+        # 2. REVIEW COMMENTS BANK
+        # ---------------------------------------------------------
+        good_reviews = [
+            "Excellent service, very professional.",
+            "Saved my life! Best doctor in the region.",
+            "Very kind and took time to explain everything.",
+            "Great facility and friendly staff.",
+            "Highly recommended for anyone with similar issues.",
+            "The treatment worked wonders. Thank you daktari.",
+            "Very knowledgeable and precise.",
+            "Wait time was short and the service was top notch."
+        ]
+        
+        avg_reviews = [
+            "Good doctor but the queue was too long.",
+            "Service was okay, but the receptionist was rude.",
+            "Decent experience, but a bit expensive.",
+            "Treatment was effective but follow-up was slow.",
+            "Average experience. Nothing special."
+        ]
+        
+        bad_reviews = [
+            "Kept me waiting for 3 hours!",
+            "Did not listen to my concerns at all.",
+            "Very expensive for the level of service provided.",
+            "Rushed through the consultation.",
+            "I would not recommend this clinic.",
+            "Very unprofessional staff."
         ]
 
-        self.stdout.write("Starting data seeding...")
-
-        count = 0
-        for name, specialty, hospital, location, cell in doctor_data:
-            # Create a dummy email based on name
-            dummy_email = f"{slugify(name)}@example.com"
+        # 3. DOCTOR DATA
+        # ---------------------------------------------------------
+        # (Name, Specialty, Hospital, Location, Contact, GenderGuess)
+        # Gender 'm' or 'f' helps us pick the right photo folder
+        doctor_data = [
+            ("Koome Muratha", "Cardiologist", "Nairobi Cardiac Rehab Centre", "Nairobi", "2721580", "m"),
+            ("Charles Kariuki", "Cardiologist", "Nairobi Hospital", "Nairobi", "2721609", "m"),
+            ("Dr Philip Kisyoka", "Cardiologist", "Nairobi Hospital", "Nairobi", "0722964288", "m"),
+            ("Dr Murithi Nyamu", "Cardiologist", "Nelson Awori", "Nairobi", "0722 433 130", "m"),
+            ("William I Okumu", "Cardiologist", "Consolidated Bank Hse", "Nairobi", "0722 320146", "m"),
             
-            # Check if doctor exists to avoid duplicates
-            if not Doctor.objects.filter(name=name, hospital=hospital).exists():
-                Doctor.objects.create(
-                    name=name,
-                    specialty=specialty,
-                    hospital=hospital,
-                    location=location,
-                    cell=cell,
-                    email=dummy_email
-                )
-                count += 1
+            ("J.M Chakava", "Physician", "The Mater Hospital", "Nairobi", "020-2252815", "m"),
+            ("Paul Ngugi", "Diabetologist", "Hazina Towers", "Nairobi", "0722-726600", "m"),
+            ("Kassim Goke", "Physician", "Upper Hill Medical Centre", "Nairobi", "020-3424832", "m"),
+            ("R.M. Muraguri", "Gastroenterologist", "The Nairobi Hospital", "Nairobi", "020-2722302", "m"),
+            ("S.M. Kairu", "Gastroenterologist", "Menelik Medical Centre", "Nairobi", "020-3877028", "m"),
+            ("Prof Erastus O. Amayo", "Neurologist", "General Accident Hse", "Nairobi", "020-2722405", "m"),
+            
+            ("Dr Lucy Mutara", "Dentist", "Mpaka Plaza Westlands", "Nairobi", "0721502512", "f"),
+            ("Dr Sanjna K.", "Dentist", "Nairobi CBD", "Nairobi", "0722252549", "f"),
+            ("Dr Kasi Marani", "Dentist", "Hurlingham Medicare Plaza", "Nairobi", "2715239", "f"),
+            ("Dr William Obwaka", "Obs/Gyn", "NSSF Building", "Nairobi", "0716473326", "m"),
+            ("Dr James Kamau", "Obs/Gyn", "Exchange Building", "Nairobi", "020-310800", "m"),
+            ("Eunice J Cheserem", "Obs/Gyn", "Nairobi Hospital Drs Plaza", "Nairobi", "020-2846434", "f"),
 
-        self.stdout.write(self.style.SUCCESS(f'Successfully added {count} doctors to the database.'))
+            ("Dr D M Kinuthia", "Paediatrician", "Aga Khan University Hospital", "Nairobi", "3740000", "m"),
+            ("C.A Okello (Mrs)", "Paediatrician", "Hurlingham Medical Centre", "Nairobi", "020-2712852", "f"),
+            ("Dr Anne Maina", "ENT Surgeon", "Optimum Medical Centre", "Nairobi", "0722 566 039", "f"),
+            
+            ("Dr Walter Otieno", "Paediatrician", "Drs. Plaza-Kisumu", "Kisumu", "0722144814", "m"),
+            ("Dr Janet Oyieko", "Paediatrician", "Oasis Medical Centre", "Kisumu", "0721 99 69 88", "f"),
+            ("Dr Leah Okin", "Obs/Gyn", "Oasis Medical Centre", "Kisumu", "0727 79 19 05", "f"),
+            
+            ("Satish Mangal Vaghela", "Dentist", "Nyali Dental Care", "Mombasa", "041-314953", "m"),
+            ("Dr Salaah A.O", "Dentist", "TSS Towers", "Mombasa", "0733 39 39 39", "m"),
+            ("Dr C.E Muyodi", "Physician", "Pandya Memorial Hospital", "Mombasa", "2230674", "m"),
+            ("Dr F. Gikandi", "Paediatrician", "Aga Khan Hospital Mombasa", "Mombasa", "0722 684 176", "f"),
+        ]
+
+        # 4. LOOP & CREATE
+        # ---------------------------------------------------------
+        count = 0
+        for name, specialty, hospital, location, cell, gender in doctor_data:
+            
+            # Generate Image URL
+            # We use randomuser.me IDs. 
+            # Men IDs: 1-99, Women IDs: 1-99.
+            # We use the name length as a seed to keep the image consistent for the same name every time we run seeds.
+            img_id = (len(name) * 3) % 99 
+            if img_id == 0: img_id = 1
+            
+            gender_path = "men" if gender == "m" else "women"
+            image_url = f"https://randomuser.me/api/portraits/{gender_path}/{img_id}.jpg"
+
+            # Create Doctor
+            doctor, created = Doctor.objects.get_or_create(
+                name=name,
+                defaults={
+                    'specialty': specialty,
+                    'hospital': hospital,
+                    'location': location,
+                    'cell': cell,
+                    'email': f"{slugify(name)}@example.com",
+                    'image': image_url
+                }
+            )
+            
+            # If doctor already existed, update the image just in case
+            if not created:
+                doctor.image = image_url
+                doctor.save()
+
+            # Create 4 to 7 Reviews
+            review_count = random.randint(4, 7)
+            # Shuffle users to get random reviewers
+            random.shuffle(users)
+            
+            # Delete existing reviews to prevent duplicates piling up if we run seeds twice
+            Review.objects.filter(doctor=doctor).delete()
+
+            for i in range(review_count):
+                user = users[i]
+                
+                # Weighted Randomness: Doctors mostly get good reviews, some bad
+                # 70% Good, 20% Avg, 10% Bad
+                rand_val = random.random()
+                if rand_val < 0.7:
+                    rating = random.randint(8, 10)
+                    comment = random.choice(good_reviews)
+                elif rand_val < 0.9:
+                    rating = random.randint(5, 7)
+                    comment = random.choice(avg_reviews)
+                else:
+                    rating = random.randint(1, 4)
+                    comment = random.choice(bad_reviews)
+                
+                Review.objects.create(
+                    doctor=doctor,
+                    user=user,
+                    rating=rating,
+                    comment=comment
+                )
+
+            count += 1
+
+        self.stdout.write(self.style.SUCCESS(f'Successfully seeded {count} doctors with images and reviews.'))

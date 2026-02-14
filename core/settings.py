@@ -42,6 +42,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',   
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -149,3 +150,25 @@ SIMPLE_JWT = {
 
 # Add this line anywhere in the file (usually near the bottom)
 AUTH_USER_MODEL = 'doctor_search_app.User'
+
+# CORS Config (Allow Frontend to talk to Backend)
+CORS_ALLOW_ALL_ORIGINS = True 
+CORS_ALLOW_CREDENTIALS = True
+
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'authorization',
+    'content-type',
+]
+
+# settings.py
+
+# ... existing settings ...
+
+# EMAIL SETTINGS (Gmail)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'bryanjessywaweru@gmail.com' # <--- PUT YOUR EMAIL HERE
+EMAIL_HOST_PASSWORD = 'ykdo nxzh lwin nexe'     # <--- PUT YOUR APP PASSWORD HERE (NOT your normal password)

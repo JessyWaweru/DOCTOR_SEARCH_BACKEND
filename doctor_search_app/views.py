@@ -7,11 +7,21 @@ from django.db.models import Avg, Count
 from rest_framework_simplejwt.tokens import RefreshToken
 from django_filters.rest_framework import DjangoFilterBackend
 
+from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
+
+from rest_framework.permissions import IsAuthenticated
+from .models import Doctor, SavedDoctor
+
+
+from .models import SavedDoctor
+from .serializers import SavedDoctorSerializer
+
 from .models import Doctor, Review
 from .serializers import (
     UserRegistrationSerializer,
-    LoginRequestSerializer,
-    OTPVerifySerializer,
+    LoginRequestSerializer,     # We will reuse this for standard login
+    OTPVerifySerializer,        # We will reuse this for email verification
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
     DoctorSerializer,
@@ -24,14 +34,13 @@ User = get_user_model()
 # HELPER FUNCTIONS
 # ===========================
 
-def send_otp_email(user, otp_code, subject_prefix="Login"):
+def send_otp_email(user, otp_code, subject_prefix="Account"):
     """Sends the OTP to the user's email."""
     subject = f'{subject_prefix} Verification Code'
-    message = f'Hello {user.username},\n\nYour OTP code is: {otp_code}\n\nIt expires in 5 minutes.'
+    message = f'Hello {user.username},\n\nYour OTP code is: {otp_code}\n\nIt expires in 10 minutes.\n\nEnter this code to verify your account.'
     email_from = settings.EMAIL_HOST_USER
     recipient_list = [user.email]
     
-    # Fail silently to avoid crashing if email settings aren't perfect yet
     try:
         send_mail(subject, message, email_from, recipient_list, fail_silently=False)
     except Exception as e:
@@ -41,36 +50,38 @@ def send_otp_email(user, otp_code, subject_prefix="Login"):
 # AUTH VIEWS
 # ===========================
 
-class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserRegistrationSerializer
-    permission_classes = [permissions.AllowAny]
-
-class LoginRequestView(views.APIView):
-    """Step 1: Validate credentials -> Generate OTP -> Send Email"""
+class RegisterView(views.APIView):
+    """Step 1: Create Account (Inactive) -> Send OTP Email"""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        serializer = LoginRequestSerializer(data=request.data)
+        serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            username = serializer.validated_data['username']
-            password = serializer.validated_data['password']
+            # Create the user but set to inactive until verified
+            user = User.objects.create_user(
+                username=serializer.validated_data['username'],
+                email=serializer.validated_data['email'],
+                password=serializer.validated_data['password']
+            )
+            user.is_active = False # Deactivate until email verified
+            user.save()
 
-            user = authenticate(username=username, password=password)
-            
-            if user is not None:
-                otp = user.generate_otp()
-                send_otp_email(user, otp, subject_prefix="Login")
-                return Response({
-                    "message": "Credentials valid. OTP sent to email.",
-                    "username": user.username
-                }, status=status.HTTP_200_OK)
-            
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            # Generate & Send OTP
+            otp = user.generate_otp()
+            send_otp_email(user, otp, subject_prefix="Activate")
+
+            return Response({
+                "message": "Account created. OTP sent to email.",
+                "username": user.username
+            }, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class LoginVerifyView(views.APIView):
-    """Step 2: Validate OTP -> Return JWT Tokens"""
+# doctors/views.py
+
+
+class VerifyEmailView(views.APIView):
+    """Step 2: Verify OTP -> Activate Account -> Auto Login"""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -85,23 +96,58 @@ class LoginVerifyView(views.APIView):
                 return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
             if user.verify_otp(otp_input):
-                # Generate SimpleJWT tokens
-                refresh = RefreshToken.for_user(user)
-                
-                # Clear OTP to prevent replay attacks
+                # 1. Activate User
+                user.is_active = True
+                user.is_email_verified = True
                 user.otp_code = None 
                 user.save()
 
+                # 2. GENERATE TOKENS (Auto-Login Logic)
+                refresh = RefreshToken.for_user(user)
+
                 return Response({
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                    'user_id': user.id,
-                    'username': user.username,
-                    'is_admin': user.admin
+                    "message": "Email verified successfully!",
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                    "user_id": user.id,
+                    "username": user.username,
+                    "is_admin": user.admin
                 }, status=status.HTTP_200_OK)
             
             return Response({"error": "Invalid or expired OTP"}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class LoginView(views.APIView):
+    """Step 3: Standard Login (Username + Password)"""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        # We reuse LoginRequestSerializer (username + password)
+        serializer = LoginRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data['username']
+            password = serializer.validated_data['password']
+
+            user = authenticate(username=username, password=password)
+
+            if user:
+                if not user.is_active:
+                    return Response({"error": "Account is not verified. Please verify your email first."}, status=status.HTTP_403_FORBIDDEN)
+                
+                # Generate Tokens
+                refresh = RefreshToken.for_user(user)
+                return Response({
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                    'user_id': user.id,
+                    'username': user.username
+                }, status=status.HTTP_200_OK)
+            
+            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# ===========================
+# PASSWORD RESET VIEWS
+# ===========================
 
 class PasswordResetRequestView(views.APIView):
     """Step 1 of Reset: Send OTP to Email"""
@@ -116,10 +162,10 @@ class PasswordResetRequestView(views.APIView):
                 otp = user.generate_otp()
                 send_otp_email(user, otp, subject_prefix="Password Reset")
             except User.DoesNotExist:
-                # Security: Do not reveal if email exists or not
+                # Security: Do not reveal if email exists
                 pass
             
-            return Response({"message": "If an account exists with this email, an OTP has been sent."}, status=status.HTTP_200_OK)
+            return Response({"message": "If an account exists, an OTP has been sent."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PasswordResetConfirmView(views.APIView):
@@ -150,6 +196,32 @@ class PasswordResetConfirmView(views.APIView):
 # DOCTOR & REVIEW VIEWS
 # ===========================
 
+
+class ToggleSavedDoctorView(APIView):
+    """
+    Checks if the doctor is saved.
+    If YES -> Deletes it (Unsave).
+    If NO -> Creates it (Save).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        doctor_id = request.data.get('doctor_id')
+        if not doctor_id:
+            return Response({"error": "doctor_id is required"}, status=400)
+
+        doctor = get_object_or_404(Doctor, id=doctor_id)
+
+        # The magic happens here: get_or_create prevents the Unique Constraint error
+        saved_entry, created = SavedDoctor.objects.get_or_create(user=request.user, doctor=doctor)
+
+        if not created:
+            # If it wasn't created, it meant it existed. So we delete it.
+            saved_entry.delete()
+            return Response({'status': 'unsaved', 'doctor_id': doctor_id})
+
+        return Response({'status': 'saved', 'doctor_id': doctor_id})
+
 class DoctorViewSet(viewsets.ModelViewSet):
     """
     Lists doctors ranked by their average review rating.
@@ -169,23 +241,54 @@ class DoctorViewSet(viewsets.ModelViewSet):
         return Doctor.objects.annotate(
             average_rating=Avg('reviews__rating'),
             review_count=Count('reviews')
-        ).order_by('-average_rating') # Default: Highest rated first
+        ).order_by('-average_rating')
+
+# doctors/views.py
+
+# ... existing imports ...
 
 class ReviewViewSet(viewsets.ModelViewSet):
     """
     Handles creating and viewing reviews.
+    Supports filtering by doctor_id and 'mine=true' for current user.
     """
     serializer_class = ReviewSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        # Optional: Filter reviews to specific doctor if 'doctor_id' is in URL params
         queryset = Review.objects.all()
+        
+        # Filter by Doctor
         doctor_id = self.request.query_params.get('doctor_id')
         if doctor_id:
             queryset = queryset.filter(doctor_id=doctor_id)
-        return queryset
+            
+        # Filter by Current User ("My Reviews")
+        if self.request.query_params.get('mine'):
+            if self.request.user.is_authenticated:
+                queryset = queryset.filter(user=self.request.user)
+            else:
+                return Review.objects.none() # Return empty if not logged in
+
+        return queryset.order_by('-created_at')
 
     def perform_create(self, serializer):
-        # Automatically link the logged-in user to the review
         serializer.save(user=self.request.user)
+
+class SavedDoctorViewSet(viewsets.ModelViewSet):
+    """
+    Manage user's saved doctors.
+    GET /saved-doctors/ -> List all saved
+    POST /saved-doctors/ -> Save a doctor (Body: {"doctor": 5})
+    DELETE /saved-doctors/{id}/ -> Unsave
+    """
+    serializer_class = SavedDoctorSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Only show doctors saved by the current user
+        return SavedDoctor.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Automatically assign the logged-in user
+        serializer.save(user=self.request.user)        
