@@ -166,3 +166,5 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'ykdo nxzh lwin nexe
 EMAIL_TIMEOUT = 10 # Stops the connection from hanging forever
 DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'bryanjessywaweru@gmail.com')
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'True') == 'True'
+# settings.py
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY')

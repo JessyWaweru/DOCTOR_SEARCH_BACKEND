@@ -1,4 +1,5 @@
 import threading # Required for background email sending
+import requests 
 from rest_framework import viewsets, status, views, generics, filters, permissions
 from rest_framework.response import Response
 from django.contrib.auth import authenticate, get_user_model
@@ -30,19 +31,32 @@ User = get_user_model()
 # HELPER FUNCTIONS
 # ===========================
 
+
+
 def send_email_async(subject, message, recipient_list):
-    """Internal helper to execute the slow send_mail in a thread."""
+    """Sends email via Resend API instead of SMTP"""
+    url = "https://api.resend.com/emails"
+    headers = {
+        "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "from": "onboarding@resend.dev", # Use this for testing
+        "to": recipient_list,
+        "subject": subject,
+        "html": f"<p>{message}</p>"
+    }
+    
     try:
-        send_mail(
-            subject, 
-            message, 
-            settings.EMAIL_HOST_USER, 
-            recipient_list, 
-            fail_silently=False
-        )
+        response = requests.post(url, json=data, headers=headers)
+        if response.status_code == 200:
+            print("✅ Email sent via Resend!")
+        else:
+            print(f"❌ Resend Error: {response.text}")
     except Exception as e:
-        # Logs to Render/Local console if email fails without crashing the main process
-        print(f"Background Email Error: {e}")
+        print(f"❌ Background API Error: {e}")
+
+# ... keep the rest of your send_otp_email and Threading logic the same ...
 
 def send_otp_email(user, otp_code, subject_prefix="Account"):
     """
