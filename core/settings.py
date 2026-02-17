@@ -159,8 +159,10 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 # --- EMAIL SETTINGS ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587)) # Default to 587
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 465)) # Default to 465
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'False') == 'False'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'bryanjessywaweru@gmail.com')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'ykdo nxzh lwin nexe')
 EMAIL_TIMEOUT = 10 # Stops the connection from hanging forever
+DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'bryanjessywaweru@gmail.com')
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'True') == 'True'
