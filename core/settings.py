@@ -175,6 +175,7 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'False') == 'True'
 EMAIL_HOST_USER = 'resend'
 EMAIL_HOST_PASSWORD = os.environ.get('RESEND_API_KEY')
 EMAIL_TIMEOUT = 10 # Stops the connection from hanging forever
+# Format example: "Doctor Search <noreply@yourdomain.com>"
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'True') == 'True'
 # settings.py

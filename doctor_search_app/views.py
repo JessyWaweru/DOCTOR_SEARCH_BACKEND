@@ -40,8 +40,9 @@ def send_email_async(subject, message, recipient_list):
         "Authorization": f"Bearer {settings.RESEND_API_KEY}",
         "Content-Type": "application/json"
     }
+    sender_email = settings.DEFAULT_FROM_EMAIL or "onboarding@resend.dev"
     data = {
-        "from": settings.DEFAULT_FROM_EMAIL or "onboarding@resend.dev",
+        "from": sender_email,
         "to": recipient_list,
         "subject": subject,
         "html": f"<p>{message}</p>"
@@ -50,7 +51,7 @@ def send_email_async(subject, message, recipient_list):
     try:
         response = requests.post(url, json=data, headers=headers)
         if response.status_code == 200:
-            print("✅ Email sent via Resend!")
+            print(f"✅ Email sent via Resend from: {sender_email}")
         else:
             print(f"❌ Resend Error: {response.text}")
     except Exception as e:
