@@ -156,6 +156,14 @@ class LoginView(views.APIView):
             username = serializer.validated_data['username']
             password = serializer.validated_data['password']
 
+            # Allow login with Email
+            if '@' in username:
+                try:
+                    user_obj = User.objects.get(email=username)
+                    username = user_obj.username
+                except User.DoesNotExist:
+                    pass # authenticate() will handle the failure naturally
+
             user = authenticate(username=username, password=password)
 
             if user:
