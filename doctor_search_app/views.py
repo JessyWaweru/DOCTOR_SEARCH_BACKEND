@@ -159,10 +159,12 @@ class LoginView(views.APIView):
             # Allow login with Email
             if '@' in username:
                 try:
-                    user_obj = User.objects.get(email=username)
+                    # Use __iexact for case-insensitive lookup
+                    user_obj = User.objects.get(email__iexact=username)
                     username = user_obj.username
                 except User.DoesNotExist:
-                    pass # authenticate() will handle the failure naturally
+                    print(f"Login Warning: No user found for email '{username}'")
+                    pass 
 
             user = authenticate(username=username, password=password)
 
@@ -194,7 +196,7 @@ class PasswordResetRequestView(views.APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             try:
-                user = User.objects.get(email=email)
+                user = User.objects.get(email__iexact=email)
                 otp = user.generate_otp()
                 # Fast response, background email
                 send_otp_email(user, otp, subject_prefix="Password Reset")
@@ -216,7 +218,7 @@ class PasswordResetConfirmView(views.APIView):
             new_password = serializer.validated_data['new_password']
 
             try:
-                user = User.objects.get(email=email)
+                user = User.objects.get(email__iexact=email)
                 if user.verify_otp(otp):
                     user.set_password(new_password)
                     user.otp_code = None
