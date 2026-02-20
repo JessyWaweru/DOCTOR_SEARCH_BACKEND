@@ -152,7 +152,7 @@ SIMPLE_JWT = {
 # --- CORS CONFIG ---
 if IN_PRODUCTION:
     CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+    CORS_ALLOWED_ORIGINS = [x.strip() for x in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if x.strip()]
 else:
     CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
