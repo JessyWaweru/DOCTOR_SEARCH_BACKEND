@@ -20,3 +20,4 @@ pytest-cov==7.0.0
 pytest-django==4.11.1
 sqlparse==0.5.3
 whitenoise==6.11.0
+requests
