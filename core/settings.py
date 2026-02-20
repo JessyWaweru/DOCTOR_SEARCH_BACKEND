@@ -29,7 +29,11 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-rj&j9icawkvhdvpem2eh5
 DEBUG = not IN_PRODUCTION
 
 if IN_PRODUCTION:
-    ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+    hosts = os.environ.get('ALLOWED_HOSTS', '')
+    ALLOWED_HOSTS = [host.strip() for host in hosts.split(',') if host.strip()]
+    # Fallback: If no hosts are set, allow all Render subdomains
+    if not ALLOWED_HOSTS:
+        ALLOWED_HOSTS = ['.onrender.com']
 else:
     ALLOWED_HOSTS = ['*']
 
