@@ -28,7 +28,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-rj&j9icawkvhdvpem2eh5
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = not IN_PRODUCTION
 
-ALLOWED_HOSTS = ['*'] # Allow all hosts (Render URL + Localhost)
+if IN_PRODUCTION:
+    ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+else:
+    ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -147,7 +150,11 @@ SIMPLE_JWT = {
 
 
 # --- CORS CONFIG ---
-CORS_ALLOW_ALL_ORIGINS = True 
+if IN_PRODUCTION:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS = list(default_headers) + [
@@ -158,13 +165,13 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 
 # --- EMAIL SETTINGS ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = 'smtp.resend.com'
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 465)) # Default to 465
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'False') == 'False'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'bryanjessywaweru@gmail.com')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'ykdo nxzh lwin nexe')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'False') == 'True'
+EMAIL_HOST_USER = 'resend'
+EMAIL_HOST_PASSWORD = os.environ.get('RESEND_API_KEY')
 EMAIL_TIMEOUT = 10 # Stops the connection from hanging forever
-DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER', 'bryanjessywaweru@gmail.com')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'True') == 'True'
 # settings.py
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY')

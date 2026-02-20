@@ -41,7 +41,7 @@ def send_email_async(subject, message, recipient_list):
         "Content-Type": "application/json"
     }
     data = {
-        "from": "onboarding@resend.dev", # Use this for testing
+        "from": settings.DEFAULT_FROM_EMAIL or "onboarding@resend.dev",
         "to": recipient_list,
         "subject": subject,
         "html": f"<p>{message}</p>"
