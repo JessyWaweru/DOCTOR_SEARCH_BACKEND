@@ -45,7 +45,7 @@ def send_email_async(subject, message, recipient_list):
         "from": sender_email,
         "to": recipient_list,
         "subject": subject,
-        "html": f"<p>{message}</p>"
+        "html": message
     }
     
     try:
@@ -65,12 +65,30 @@ def send_otp_email(user, otp_code, subject_prefix="Account"):
     This prevents 'CRITICAL WORKER TIMEOUT' on Render.
     """
     subject = f'{subject_prefix} Verification Code'
-    message = (
-        f'Hello {user.username},\n\n'
-        f'Your OTP code is: {otp_code}\n\n'
-        f'It expires in 10 minutes.\n\n'
-        f'Enter this code to verify your account.'
-    )
+    
+    # Beautified HTML Message
+    message = f"""
+    <div style="font-family: Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #ffffff;">
+        <div style="text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
+            <h2 style="color: #2c3e50; margin: 0;">Doctor Search</h2>
+        </div>
+        <div style="text-align: center;">
+            <p style="font-size: 16px; color: #555;">Hello <strong>{user.username}</strong>,</p>
+            <p style="font-size: 16px; color: #555;">Use the verification code below to complete your request:</p>
+            
+            <div style="background-color: #f8f9fa; border: 1px dashed #007bff; padding: 15px; margin: 20px auto; width: fit-content; border-radius: 5px;">
+                <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #007bff;">{otp_code}</span>
+            </div>
+            
+            <p style="font-size: 14px; color: #777;">This code is valid for <strong>10 minutes</strong>.</p>
+            <p style="font-size: 14px; color: #999; margin-top: 30px;">If you did not request this, please ignore this email.</p>
+        </div>
+        <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #aaa; border-top: 1px solid #eee; padding-top: 10px;">
+            &copy; Doctor Search App
+        </div>
+    </div>
+    """
+
     recipient_list = [user.email]
     
     # Start the thread
