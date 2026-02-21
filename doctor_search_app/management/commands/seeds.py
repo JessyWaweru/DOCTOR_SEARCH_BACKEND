@@ -7,7 +7,7 @@ from django.utils.text import slugify
 User = get_user_model()
 
 class Command(BaseCommand):
-    help = 'Load doctor data with images and reviews'
+    help = 'Load doctor data with images and conditional reviews'
 
     def handle(self, *args, **kwargs):
         self.stdout.write("Starting database seeding...")
@@ -31,7 +31,6 @@ class Command(BaseCommand):
             users.append(user)
         
         self.stdout.write(f"Created/Loaded {len(users)} dummy users.")
-
 
         # 2. REVIEW COMMENTS BANK
         # ---------------------------------------------------------
@@ -65,107 +64,245 @@ class Command(BaseCommand):
 
         # 3. DOCTOR DATA
         # ---------------------------------------------------------
-        # (Name, Specialty, Hospital, Location, Contact, GenderGuess)
-        # Gender 'm' or 'f' helps us pick the right photo folder
         doctor_data = [
-            ("Koome Muratha", "Cardiologist", "Nairobi Cardiac Rehab Centre", "Nairobi", "2721580", "m"),
-            ("Charles Kariuki", "Cardiologist", "Nairobi Hospital", "Nairobi", "2721609", "m"),
-            ("Dr Philip Kisyoka", "Cardiologist", "Nairobi Hospital", "Nairobi", "0722964288", "m"),
-            ("Dr Murithi Nyamu", "Cardiologist", "Nelson Awori", "Nairobi", "0722 433 130", "m"),
-            ("William I Okumu", "Cardiologist", "Consolidated Bank Hse", "Nairobi", "0722 320146", "m"),
-            
-            ("J.M Chakava", "Physician", "The Mater Hospital", "Nairobi", "020-2252815", "m"),
-            ("Paul Ngugi", "Diabetologist", "Hazina Towers", "Nairobi", "0722-726600", "m"),
-            ("Kassim Goke", "Physician", "Upper Hill Medical Centre", "Nairobi", "020-3424832", "m"),
-            ("R.M. Muraguri", "Gastroenterologist", "The Nairobi Hospital", "Nairobi", "020-2722302", "m"),
-            ("S.M. Kairu", "Gastroenterologist", "Menelik Medical Centre", "Nairobi", "020-3877028", "m"),
-            ("Prof Erastus O. Amayo", "Neurologist", "General Accident Hse", "Nairobi", "020-2722405", "m"),
-            
-            ("Dr Lucy Mutara", "Dentist", "Mpaka Plaza Westlands", "Nairobi", "0721502512", "f"),
-            ("Dr Sanjna K.", "Dentist", "Nairobi CBD", "Nairobi", "0722252549", "f"),
-            ("Dr Kasi Marani", "Dentist", "Hurlingham Medicare Plaza", "Nairobi", "2715239", "f"),
-            ("Dr William Obwaka", "Obs/Gyn", "NSSF Building", "Nairobi", "0716473326", "m"),
-            ("Dr James Kamau", "Obs/Gyn", "Exchange Building", "Nairobi", "020-310800", "m"),
-            ("Eunice J Cheserem", "Obs/Gyn", "Nairobi Hospital Drs Plaza", "Nairobi", "020-2846434", "f"),
+            # --- OLD DOCTORS (Default Image, Generate Reviews) ---
+            {
+                "name": "Koome Muratha", "specialty": "Cardiologist", "hospital": "Nairobi Cardiac Rehab Centre", 
+                "location": "Nairobi", "cell": "2721580", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Charles Kariuki", "specialty": "Cardiologist", "hospital": "Nairobi Hospital", 
+                "location": "Nairobi", "cell": "2721609", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr Philip Kisyoka", "specialty": "Cardiologist", "hospital": "Nairobi Hospital", 
+                "location": "Nairobi", "cell": "0722964288", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr Murithi Nyamu", "specialty": "Cardiologist", "hospital": "Nelson Awori", 
+                "location": "Nairobi", "cell": "0722 433 130", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "William I Okumu", "specialty": "Cardiologist", "hospital": "Consolidated Bank Hse", 
+                "location": "Nairobi", "cell": "0722 320146", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "J.M Chakava", "specialty": "Physician", "hospital": "The Mater Hospital", 
+                "location": "Nairobi", "cell": "020-2252815", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Paul Ngugi", "specialty": "Diabetologist", "hospital": "Hazina Towers", 
+                "location": "Nairobi", "cell": "0722-726600", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Kassim Goke", "specialty": "Physician", "hospital": "Upper Hill Medical Centre", 
+                "location": "Nairobi", "cell": "020-3424832", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "R.M. Muraguri", "specialty": "Gastroenterologist", "hospital": "The Nairobi Hospital", 
+                "location": "Nairobi", "cell": "020-2722302", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "S.M. Kairu", "specialty": "Gastroenterologist", "hospital": "Menelik Medical Centre", 
+                "location": "Nairobi", "cell": "020-3877028", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Prof Erastus O. Amayo", "specialty": "Neurologist", "hospital": "General Accident Hse", 
+                "location": "Nairobi", "cell": "020-2722405", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr Lucy Mutara", "specialty": "Dentist", "hospital": "Mpaka Plaza Westlands", 
+                "location": "Nairobi", "cell": "0721502512", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr Sanjna K.", "specialty": "Dentist", "hospital": "Nairobi CBD", 
+                "location": "Nairobi", "cell": "0722252549", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr Kasi Marani", "specialty": "Dentist", "hospital": "Hurlingham Medicare Plaza", 
+                "location": "Nairobi", "cell": "2715239", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr William Obwaka", "specialty": "Obs/Gyn", "hospital": "NSSF Building", 
+                "location": "Nairobi", "cell": "0716473326", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr James Kamau", "specialty": "Obs/Gyn", "hospital": "Exchange Building", 
+                "location": "Nairobi", "cell": "020-310800", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Eunice J Cheserem", "specialty": "Obs/Gyn", "hospital": "Nairobi Hospital Drs Plaza", 
+                "location": "Nairobi", "cell": "020-2846434", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr D M Kinuthia", "specialty": "Paediatrician", "hospital": "Aga Khan University Hospital", 
+                "location": "Nairobi", "cell": "3740000", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "C.A Okello (Mrs)", "specialty": "Paediatrician", "hospital": "Hurlingham Medical Centre", 
+                "location": "Nairobi", "cell": "020-2712852", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr Anne Maina", "specialty": "ENT Surgeon", "hospital": "Optimum Medical Centre", 
+                "location": "Nairobi", "cell": "0722 566 039", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr Walter Otieno", "specialty": "Paediatrician", "hospital": "Drs. Plaza-Kisumu", 
+                "location": "Kisumu", "cell": "0722144814", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr Janet Oyieko", "specialty": "Paediatrician", "hospital": "Oasis Medical Centre", 
+                "location": "Kisumu", "cell": "0721 99 69 88", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr Leah Okin", "specialty": "Obs/Gyn", "hospital": "Oasis Medical Centre", 
+                "location": "Kisumu", "cell": "0727 79 19 05", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Satish Mangal Vaghela", "specialty": "Dentist", "hospital": "Nyali Dental Care", 
+                "location": "Mombasa", "cell": "041-314953", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr Salaah A.O", "specialty": "Dentist", "hospital": "TSS Towers", 
+                "location": "Mombasa", "cell": "0733 39 39 39", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr C.E Muyodi", "specialty": "Physician", "hospital": "Pandya Memorial Hospital", 
+                "location": "Mombasa", "cell": "2230674", "image": None, "generate_reviews": True
+            },
+            {
+                "name": "Dr F. Gikandi", "specialty": "Paediatrician", "hospital": "Aga Khan Hospital Mombasa", 
+                "location": "Mombasa", "cell": "0722 684 176", "image": None, "generate_reviews": True
+            },
 
-            ("Dr D M Kinuthia", "Paediatrician", "Aga Khan University Hospital", "Nairobi", "3740000", "m"),
-            ("C.A Okello (Mrs)", "Paediatrician", "Hurlingham Medical Centre", "Nairobi", "020-2712852", "f"),
-            ("Dr Anne Maina", "ENT Surgeon", "Optimum Medical Centre", "Nairobi", "0722 566 039", "f"),
-            
-            ("Dr Walter Otieno", "Paediatrician", "Drs. Plaza-Kisumu", "Kisumu", "0722144814", "m"),
-            ("Dr Janet Oyieko", "Paediatrician", "Oasis Medical Centre", "Kisumu", "0721 99 69 88", "f"),
-            ("Dr Leah Okin", "Obs/Gyn", "Oasis Medical Centre", "Kisumu", "0727 79 19 05", "f"),
-            
-            ("Satish Mangal Vaghela", "Dentist", "Nyali Dental Care", "Mombasa", "041-314953", "m"),
-            ("Dr Salaah A.O", "Dentist", "TSS Towers", "Mombasa", "0733 39 39 39", "m"),
-            ("Dr C.E Muyodi", "Physician", "Pandya Memorial Hospital", "Mombasa", "2230674", "m"),
-            ("Dr F. Gikandi", "Paediatrician", "Aga Khan Hospital Mombasa", "Mombasa", "0722 684 176", "f"),
+            # --- NEW DOCTORS (Explicit Image, NO Reviews) ---
+            {
+                "name": "Dr. Dan K. Gikonyo", "specialty": "Adult Cardiologist", "hospital": "The Karen Hospital", 
+                "location": "Nairobi", "cell": "0709 382 000", 
+                "image": "https://karenhospital.org/wp-content/uploads/2020/09/Dr-Dan-Gikonyo.jpg", 
+                "generate_reviews": False
+            },
+            {
+                "name": "Dr. Francis Mbugua", "specialty": "Orthopaedic Surgeon", "hospital": "Private Practice", 
+                "location": "Nairobi", "cell": "0791 399 103", 
+                "image": "https://static.wixstatic.com/media/a9ff10_8b1116ea77d94f27b9cde5629c118ed3~mv2.jpg", 
+                "generate_reviews": False
+            },
+            {
+                "name": "Prof. Zahida Qureshi", "specialty": "Obstetrician & Gynaecologist", "hospital": "Upper Hill Medical Centre", 
+                "location": "Nairobi", "cell": "0724 255 295", 
+                "image": "https://randomuser.me/api/portraits/women/44.jpg", 
+                "generate_reviews": False
+            },
+            {
+                "name": "Dr. Hosea W. Waweru", "specialty": "Dermatologist", "hospital": "Upper Hill Medical Centre", 
+                "location": "Nairobi", "cell": "0737 343 146", 
+                "image": "https://randomuser.me/api/portraits/men/32.jpg", 
+                "generate_reviews": False
+            },
+            {
+                "name": "Dr. J.M. Chakaya", "specialty": "Chest Physician", "hospital": "Fortis Suites", 
+                "location": "Nairobi", "cell": "0725 522 915", 
+                "image": "https://randomuser.me/api/portraits/men/45.jpg", 
+                "generate_reviews": False
+            },
+            {
+                "name": "Dr. Sangeeta Chauhan", "specialty": "Endocrinologist", "hospital": "Aga Khan Doctors Plaza", 
+                "location": "Nairobi", "cell": "0711 092 720", 
+                "image": "https://randomuser.me/api/portraits/women/68.jpg", 
+                "generate_reviews": False
+            },
+            {
+                "name": "Dr. Smita Devani", "specialty": "Gastroenterologist", "hospital": "Aga Khan Doctors Plaza", 
+                "location": "Nairobi", "cell": "0733 943 802", 
+                "image": "https://randomuser.me/api/portraits/women/65.jpg", 
+                "generate_reviews": False
+            },
+            {
+                "name": "Dr. Bernard Samia", "specialty": "Consultant Physician and Cardiologist", "hospital": "MP Shah Hospital", 
+                "location": "Nairobi", "cell": "020 429 1000", 
+                "image": "https://randomuser.me/api/portraits/men/22.jpg", 
+                "generate_reviews": False
+            },
+            {
+                "name": "Dr. Shamsa Hussein Ahmed", "specialty": "Infectious Diseases Physician", "hospital": "MP Shah Hospital", 
+                "location": "Nairobi", "cell": "020 429 1000", 
+                "image": "https://mpshahhosp.org/wp-content/uploads/2025/01/dr-shamsa-ahmed.jpg", 
+                "email": "info@mpshahhospital.org",
+                "generate_reviews": False
+            },
+            {
+                "name": "Dr. Charles Kabetu", "specialty": "Anaesthetist", "hospital": "Upper Hill Medical Centre", 
+                "location": "Nairobi", "cell": "020 262 7156", 
+                "image": None, 
+                "generate_reviews": False
+            }
         ]
 
         # 4. LOOP & CREATE
         # ---------------------------------------------------------
+        # Standard grey silhouette placeholder (like WhatsApp)
+        DEFAULT_AVATAR = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"
+        
         count = 0
-        for name, specialty, hospital, location, cell, gender in doctor_data:
+        for doc in doctor_data:
             
-            # Generate Image URL
-            # We use randomuser.me IDs. 
-            # Men IDs: 1-99, Women IDs: 1-99.
-            # We use the name length as a seed to keep the image consistent for the same name every time we run seeds.
-            img_id = (len(name) * 3) % 99 
-            if img_id == 0: img_id = 1
-            
-            gender_path = "men" if gender == "m" else "women"
-            image_url = f"https://randomuser.me/api/portraits/{gender_path}/{img_id}.jpg"
+            # 1. Determine Image
+            final_image_url = doc.get("image")
+            if not final_image_url:
+                final_image_url = DEFAULT_AVATAR
 
-            # Create Doctor
+            # 2. Create or Update Doctor
             doctor, created = Doctor.objects.get_or_create(
-                name=name,
+                name=doc["name"],
                 defaults={
-                    'specialty': specialty,
-                    'hospital': hospital,
-                    'location': location,
-                    'cell': cell,
-                    'email': f"{slugify(name)}@example.com",
-                    'image': image_url
+                    'specialty': doc["specialty"],
+                    'hospital': doc["hospital"],
+                    'location': doc["location"],
+                    'cell': doc["cell"],
+                    'email': doc.get('email', '-'),
+                    'image': final_image_url
                 }
             )
             
-            # If doctor already existed, update the image just in case
+            # If doctor already existed, ensure the image is up to date
             if not created:
-                doctor.image = image_url
+                doctor.image = final_image_url
+                doctor.email = doc.get('email', '-')
                 doctor.save()
 
-            # Create 4 to 7 Reviews
-            review_count = random.randint(4, 7)
-            # Shuffle users to get random reviewers
-            random.shuffle(users)
-            
-            # Delete existing reviews to prevent duplicates piling up if we run seeds twice
-            Review.objects.filter(doctor=doctor).delete()
+            # 3. Handle Reviews
+            if doc.get("generate_reviews", False):
+                # Delete existing reviews to prevent duplicates piling up if run multiple times
+                Review.objects.filter(doctor=doctor).delete()
 
-            for i in range(review_count):
-                user = users[i]
+                review_count = random.randint(4, 7)
+                random.shuffle(users)
                 
-                # Weighted Randomness: Doctors mostly get good reviews, some bad
-                # 70% Good, 20% Avg, 10% Bad
-                rand_val = random.random()
-                if rand_val < 0.7:
-                    rating = random.randint(8, 10)
-                    comment = random.choice(good_reviews)
-                elif rand_val < 0.9:
-                    rating = random.randint(5, 7)
-                    comment = random.choice(avg_reviews)
-                else:
-                    rating = random.randint(1, 4)
-                    comment = random.choice(bad_reviews)
-                
-                Review.objects.create(
-                    doctor=doctor,
-                    user=user,
-                    rating=rating,
-                    comment=comment
-                )
+                for i in range(review_count):
+                    user = users[i]
+                    
+                    rand_val = random.random()
+                    if rand_val < 0.7:
+                        rating = random.randint(8, 10)
+                        comment = random.choice(good_reviews)
+                    elif rand_val < 0.9:
+                        rating = random.randint(5, 7)
+                        comment = random.choice(avg_reviews)
+                    else:
+                        rating = random.randint(1, 4)
+                        comment = random.choice(bad_reviews)
+                    
+                    Review.objects.create(
+                        doctor=doctor,
+                        user=user,
+                        rating=rating,
+                        comment=comment
+                    )
+            else:
+                # Ensure the new doctors are swept clean of any accidental past reviews
+                Review.objects.filter(doctor=doctor).delete()
 
             count += 1
 
-        self.stdout.write(self.style.SUCCESS(f'Successfully seeded {count} doctors with images and reviews.'))
+        self.stdout.write(self.style.SUCCESS(f'Successfully seeded {count} doctors.'))

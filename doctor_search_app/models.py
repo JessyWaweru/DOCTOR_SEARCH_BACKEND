@@ -38,7 +38,7 @@ class Doctor(models.Model):
     specialty = models.CharField(max_length=100)
     hospital = models.CharField(max_length=255)
     location = models.CharField(max_length=255)
-    email = models.EmailField()
+    email = models.CharField(max_length=255, blank=True, null=True)
     cell = models.CharField(max_length=20)
     
     # NEW FIELD FOR IMAGES
