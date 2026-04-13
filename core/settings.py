@@ -137,21 +137,25 @@ AUTH_USER_MODEL = 'doctor_search_app.User'
 
 
 # --- REST FRAMEWORK ---
+# --- REST FRAMEWORK ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_FILTER_BACKEND': [
+    'DEFAULT_FILTER_BACKENDS': [  # <-- Fixed typo (added the 'S')
         'django_filters.rest_framework.DjangoFilterBackend',
+    ],
+    # 1. Force Django to ONLY use JSON in production to prevent 500 errors
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
     ],
 }
 
-# --- JWT SETTINGS ---
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-}
-
+# 2. Only add the "Pretty HTML" view if you are testing locally on your laptop
+if DEBUG:
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'].append(
+        'rest_framework.renderers.BrowsableAPIRenderer'
+    )
 
 # --- CORS CONFIG ---
 if IN_PRODUCTION:
